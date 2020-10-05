@@ -1,0 +1,39 @@
+{
+  "name": "wow-calendar",
+  "version": "0.0.1",
+  "description": "Discord bot to exceed in game wow calendar",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsc && node build/src/index.js",
+    "dev": "tsnd --respawn --transpile-only src/index.ts",
+    "inspect": "tsnd --inspect -- src/index.ts",
+    "build": "tsc"
+  },
+  "keywords": [
+    "discord",
+    "wow",
+    "calendar"
+  ],
+  "author": "Ghetolay",
+  "license": "ISC",
+  "dependencies": {
+    "@types/emoji-strip": "^1.0.0",
+    "@types/node-cleanup": "^2.1.1",
+    "@types/node-schedule": "^1.3.0",
+    "@types/ws": "^7.2.6",
+    "date-fns": "^2.16.1",
+    "discord-command-parser": "^1.5.0",
+    "discord-dynamic-messages": "^4.0.0",
+    "discord.js": "^12.3.1",
+    "emoji-strip": "^1.0.1",
+    "node-cleanup": "^2.1.2",
+    "node-schedule": "^1.3.2",
+    "tslib": "^2.0.1",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^14.6.0",
+    "ts-node-dev": "^1.0.0-pre.58",
+    "typescript": "^3.9.7"
+  }
+}

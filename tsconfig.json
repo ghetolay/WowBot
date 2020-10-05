@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+      "module": "CommonJS",
+      "target": "es2015",
+      "noImplicitAny": true,
+      "strict": true,
+      "removeComments": true,
+      "preserveConstEnums": true,
+      "resolveJsonModule": true,
+      "outDir": "build",
+      "emitDecoratorMetadata": true,
+      "esModuleInterop": true,
+      "experimentalDecorators": true,
+      "importHelpers": true,
+      "forceConsistentCasingInFileNames": true,
+      "types": [
+        "node"
+      ],
+      "lib": [
+          "es2017",
+          "ESNext.AsyncIterable",
+          "es2020.string"
+      ],
+      "moduleResolution": "node",
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts"],
+}
