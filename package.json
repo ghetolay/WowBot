@@ -2,7 +2,11 @@
   "name": "wow-calendar",
   "version": "0.1.0",
   "description": "Discord bot to exceed in-game wow calendar",
-  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ghetolay/WowBot.git"
+  },
+  "main": "build/index.js",
   "scripts": {
     "dev": "tsnd --respawn --transpile-only src/index.ts",
     "inspect": "tsnd --inspect -- src/index.ts",
