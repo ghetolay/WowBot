@@ -1,6 +1,6 @@
 {
   "name": "wow-calendar",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Discord bot to exceed in-game wow calendar",
   "main": "index.js",
   "scripts": {
