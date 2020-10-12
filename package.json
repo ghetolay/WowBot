@@ -1,13 +1,17 @@
 {
   "name": "wow-calendar",
   "version": "0.0.1",
-  "description": "Discord bot to exceed in game wow calendar",
+  "description": "Discord bot to exceed in-game wow calendar",
   "main": "index.js",
   "scripts": {
-    "start": "tsc && node build/src/index.js",
     "dev": "tsnd --respawn --transpile-only src/index.ts",
     "inspect": "tsnd --inspect -- src/index.ts",
-    "build": "tsc"
+    "prebuild": "rimraf build",
+    "build": "tsc",
+    "docker": "docker build --build-arg CONFIG_PATH=config.json -t ghetolay/wowbot .",
+    "dist": "npm run build && npm run docker",
+    "docker-dev": "npm run dist && docker run -e 'NODE_ENV=production' ghetolay/wowbot",
+    "test": "node test.js $PORT"
   },
   "keywords": [
     "discord",
@@ -15,25 +19,115 @@
     "calendar"
   ],
   "author": "Ghetolay",
-  "license": "ISC",
+  "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@types/emoji-strip": "^1.0.0",
-    "@types/node-cleanup": "^2.1.1",
-    "@types/node-schedule": "^1.3.0",
-    "@types/ws": "^7.2.6",
     "date-fns": "^2.16.1",
     "discord-command-parser": "^1.5.0",
-    "discord-dynamic-messages": "^4.0.0",
     "discord.js": "^12.3.1",
     "emoji-strip": "^1.0.1",
+    "find-up": "^5.0.0",
     "node-cleanup": "^2.1.2",
     "node-schedule": "^1.3.2",
-    "tslib": "^2.0.1",
     "winston": "^3.3.3"
   },
   "devDependencies": {
-    "@types/node": "^14.6.0",
-    "ts-node-dev": "^1.0.0-pre.58",
+    "@typescript-eslint/parser": "^4.4.0",
+    "@types/emoji-strip": "^1.0.0",
+    "@types/node": "^14.11.5",
+    "@types/node-cleanup": "^2.1.1",
+    "@types/node-schedule": "^1.3.0",
+    "@types/ws": "^7.2.7",
+    "@typescript-eslint/eslint-plugin": "^4.4.0",
+    "eslint": "^7.10.0",
+    "eslint-config-prettier": "^6.12.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "husky": "^4.3.0",
+    "lint-staged": "^10.4.0",
+    "prettier": "2.1.2",
+    "ts-node-dev": "^1.0.0-pre.63",
+    "tslib": "^2.0.1",
     "typescript": "^3.9.7"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "trailingComma": "es5",
+    "tabWidth": 4,
+    "semi": true,
+    "singleQuote": true,
+    "bracketSpacing": true,
+    "arrowParens": "avoid",
+    "parser": "typescript",
+    "embeddedLanguageFormatting": "auto"
+  },
+  "eslintConfig": {
+    "root": true,
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "prettier",
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "plugin:@typescript-eslint/recommended",
+      "prettier/@typescript-eslint",
+      "plugin:prettier/recommended"
+    ],
+    "rules": {
+      "prettier/prettier": "error",
+      "no-await-in-loop": "warn",
+      "no-console": "warn",
+      "require-atomic-updates": "error",
+      "class-methods-use-this": "warn",
+      "complexity": [
+        "warn",
+        10
+      ],
+      "default-case-last": "error",
+      "eqeqeq": [
+        "error",
+        "smart"
+      ],
+      "dot-notation": "error",
+      "dot-location": [
+        "error",
+        "property"
+      ],
+      "no-alert": "error",
+      "no-caller": "error",
+      "no-else-return": "error",
+      "no-extra-bind": "error",
+      "no-eq-null": "off",
+      "no-loop-func": "error",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_"
+        }
+      ],
+      "no-unused-expressions": "error",
+      "no-useless-call": "error",
+      "no-useless-concat": "error",
+      "require-await": "warn",
+      "no-shadow": "off",
+      "@typescript-eslint/no-shadow": [
+        "error"
+      ],
+      "@typescript-eslint/array-type": "error",
+      "@typescript-eslint/no-non-null-assertion": "off"
+    }
+  },
+  "eslintIgnore": [
+    "/*",
+    "!/src/"
+  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.ts": "eslint --cache",
+    "*.{ts,md}": "prettier --write"
   }
 }

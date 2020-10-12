@@ -1,6 +1,3 @@
-import { DH_CHECK_P_NOT_PRIME } from 'constants'
-import { GuildEmoji, Guild } from 'discord.js';
-
 export const enum SpecType {
     TANK = 0,
     HEAL,
@@ -14,11 +11,18 @@ export const enum SpecTypePlus {
     RDPS,
 }
 
-export function getSpecTypePlus(spec: WowSpec) {
+export function toSpecTypePlus(spec: WowSpec): SpecTypePlus {
     return spec.type === SpecType.DPS ? SpecType.DPS + (spec.range ? 1 : 0) : spec.type;
 }
 
-// TODO link to class, waiting till I really need it to do it => lazy loading :D
+export function toSpecType(specType: SpecTypePlus): SpecType {
+    return specType === SpecTypePlus.MDPS || specType === SpecTypePlus.RDPS
+        ? SpecType.DPS
+        : // TODO typing shouldn't be needed
+          ((specType as unknown) as SpecType);
+}
+
+// TODO link to class, waiting till I really need it to do it => lazy doing :D
 export interface WowSpec {
     id: WowSpecId;
     name: string;
@@ -30,10 +34,10 @@ export interface WowSpec {
 export interface WowClass {
     name: string;
     emojiName: string;
-    specs: {[name: string]: WowSpec};
+    specs: { [name: string]: WowSpec };
 }
 
-// key must be same as spec id
+// /!\ key must be same as `id` property
 // TODO LOW find a better way to narrow down id type to the string literal
 const _WowSpecs = {
     // Death Knight
@@ -166,7 +170,7 @@ const _WowSpecs = {
         type: SpecType.DPS,
         range: true,
     },
-     
+
     mage_dps: {
         id: 'mage_dps',
         name: 'mage',
@@ -380,27 +384,27 @@ export function getWowSpec(id: string): WowSpec | undefined {
     return WowSpecs[id as WowSpecId];
 }
 
-export namespace WowClasses {
-    export const DK = {
+export const WowClasses = {
+    DK: {
         name: 'DeathKnight',
         emojiName: 'deathknight',
         specs: {
-            Blood:  WowSpecs.dk_blood,
-            Frost:  WowSpecs.dk_frost,
+            Blood: WowSpecs.dk_blood,
+            Frost: WowSpecs.dk_frost,
             Unholy: WowSpecs.dk_unholy,
         },
-    }
+    },
 
-    export const DH = {
+    DH: {
         name: 'DemonHunter',
         emojiName: 'demonhunter',
         specs: {
             Vengeance: WowSpecs.dh_vengeance,
             Havoc: WowSpecs.dh_havoc,
         },
-    };
+    },
 
-    export const Druid = {
+    Druid: {
         name: 'Druid',
         emojiName: 'druid',
         specs: {
@@ -408,10 +412,10 @@ export namespace WowClasses {
             Restoration: WowSpecs.druid_resto,
             Balance: WowSpecs.druid_balance,
             Feral: WowSpecs.druid_feral,
-        }
-    };
+        },
+    },
 
-    export const Hunt = {
+    Hunt: {
         name: 'Hunter',
         emojiName: 'hunter',
         specs: {
@@ -419,19 +423,19 @@ export namespace WowClasses {
             Marksmanship: WowSpecs.hunt_marksman,
             Survival: WowSpecs.hunt_survival,
         },
-    };
+    },
 
-    export const Mage = {
+    Mage: {
         name: 'Mage',
         emojiName: 'mage',
         specs: {
             Frost: WowSpecs.mage_frost,
             Fire: WowSpecs.mage_fire,
             Arcane: WowSpecs.mage_arcane,
-        }
-    };
+        },
+    },
 
-    export const Monk = {
+    Monk: {
         name: 'Monk',
         emojiName: 'monk',
         specs: {
@@ -439,9 +443,9 @@ export namespace WowClasses {
             Mistweaver: WowSpecs.monk_mistweaver,
             Windwalker: WowSpecs.monk_windwalker,
         },
-    };
+    },
 
-    export const Pal = {
+    Pal: {
         name: 'Paladin',
         emojiName: 'paladin',
         specs: {
@@ -449,9 +453,9 @@ export namespace WowClasses {
             Holy: WowSpecs.pal_holy,
             Retribution: WowSpecs.pal_ret,
         },
-    };
+    },
 
-    export const Priest = {
+    Priest: {
         name: 'Priest',
         emojiName: 'priest',
         specs: {
@@ -459,9 +463,9 @@ export namespace WowClasses {
             Discipline: WowSpecs.priest_disci,
             Shadow: WowSpecs.priest_shadow,
         },
-    };
+    },
 
-    export const Rogue = {
+    Rogue: {
         name: 'Rogue',
         emojiName: 'rogue',
         specs: {
@@ -469,9 +473,9 @@ export namespace WowClasses {
             Outlaw: WowSpecs.rogue_outlaw,
             Subtlety: WowSpecs.rogue_sub,
         },
-    };
+    },
 
-    export const Sham = {
+    Sham: {
         name: 'Shaman',
         emojiName: 'shaman',
         specs: {
@@ -479,9 +483,9 @@ export namespace WowClasses {
             Elemental: WowSpecs.shaman_elem,
             Enhancement: WowSpecs.shaman_enhancement,
         },
-    };
+    },
 
-    export const Warlock = {
+    Warlock: {
         name: 'Warlock',
         emojiName: 'warlock',
         specs: {
@@ -489,9 +493,9 @@ export namespace WowClasses {
             Demonology: WowSpecs.warlock_demono,
             Destruction: WowSpecs.warlock_destru,
         },
-    };
+    },
 
-    export const War = {
+    War: {
         name: 'Warrior',
         emojiName: 'warrior',
         specs: {
@@ -499,9 +503,9 @@ export namespace WowClasses {
             Arm: WowSpecs.war_arm,
             Fury: WowSpecs.war_fury,
         },
-    };
-}
+    },
+};
 
 // grrr same name
 export type WowClasseNames = keyof typeof WowClasses;
-export const WowClasseNames = Object.keys(WowClasses) as WowClasseNames[];
+WowClasseNames: Object.keys(WowClasses) as WowClasseNames[];

@@ -1,30 +1,38 @@
 import { Snowflake } from 'discord.js';
 import { WowSpec, WowSpecId } from '../../model';
 
-export interface RosterData {
-    [userId: string]: {
-        mainSpec?: WowSpecId; 
-        offSpecs: WowSpecId[];
-    }
+export interface PlayerSpecs {
+    mainSpec?: WowSpecId;
+    offSpecs: WowSpecId[];
+}
+
+export interface RosterDataDict {
+    [userId: string]: PlayerSpecs;
+}
+
+function getSpecId(specOrId: WowSpec | WowSpecId) {
+    return (<WowSpec>specOrId).id || <string>specOrId;
 }
 
 // TODO immutable ?
-export namespace RosterUtils {
-
-    function getSpecId(specOrId: WowSpec | WowSpecId) {
-        return (<WowSpec>specOrId).id || <string>specOrId;
-    }
-
-    export function userHasSpec(roster: RosterData, userId: Snowflake, specId: WowSpecId) {
+export const RosterUtils = {
+    userHasSpec(roster: RosterDataDict, userId: Snowflake, specId: WowSpecId): boolean {
         const playerSpecs = roster[userId];
-        return playerSpecs != null && (playerSpecs.mainSpec === specId || playerSpecs.offSpecs.some(s => s === specId));
-    }
+        return (
+            playerSpecs != null &&
+            (playerSpecs.mainSpec === specId || playerSpecs.offSpecs.some(s => s === specId))
+        );
+    },
 
-    export function getSpecs(roster: RosterData, userId: Snowflake) {
+    getSpecs(roster: RosterDataDict, userId: Snowflake): PlayerSpecs {
         return roster[userId];
-    }
+    },
 
-    export function setMainSpecToUser(roster: RosterData, userId: Snowflake, mainSpec?: WowSpecId | WowSpec) {
+    setMainSpecToUser(
+        roster: RosterDataDict,
+        userId: Snowflake,
+        mainSpec?: WowSpecId | WowSpec
+    ): void {
         const playerSpecs = roster[userId];
         const mainSpecId = mainSpec != null ? getSpecId(mainSpec) : undefined;
 
@@ -36,12 +44,16 @@ export namespace RosterUtils {
         } else {
             playerSpecs.mainSpec = mainSpecId;
         }
-    }
+    },
 
-    export function addSpecToUser(roster: RosterData, userId: Snowflake, specOrId: WowSpecId | WowSpec, forceMain = false) {
+    addSpecToUser(
+        roster: RosterDataDict,
+        userId: Snowflake,
+        specOrId: WowSpecId | WowSpec
+    ): boolean {
         const specId = getSpecId(specOrId);
 
-        if (userHasSpec(roster, userId, specId)){
+        if (RosterUtils.userHasSpec(roster, userId, specId)) {
             return false;
         }
 
@@ -51,14 +63,18 @@ export namespace RosterUtils {
         } else {
             roster[userId] = {
                 mainSpec: specId,
-                offSpecs: [],   
+                offSpecs: [],
             };
         }
 
         return true;
-    }
+    },
 
-    export function removeSpecToUser(roster: RosterData, userId: Snowflake, specOrId: WowSpecId | WowSpec) {
+    removeSpecToUser(
+        roster: RosterDataDict,
+        userId: Snowflake,
+        specOrId: WowSpecId | WowSpec
+    ): boolean {
         const playerSpecs = roster[userId];
         const specId = getSpecId(specOrId);
 
@@ -69,19 +85,10 @@ export namespace RosterUtils {
         if (playerSpecs.mainSpec === specId) {
             playerSpecs.mainSpec = playerSpecs.offSpecs.shift();
             return true;
-        } else {
-            const oldOffSpecsNb = playerSpecs.offSpecs.length;
-            playerSpecs.offSpecs = playerSpecs.offSpecs.filter(s => s !== specId);
-
-            return playerSpecs.offSpecs.length < oldOffSpecsNb;
         }
-    }
+        const oldOffSpecsNb = playerSpecs.offSpecs.length;
+        playerSpecs.offSpecs = playerSpecs.offSpecs.filter(s => s !== specId);
 
-    /*
-    public forEachUser(callback: (id: Snowflake, specs: {mainSpec?: WowSpecId, offSpecs: WowSpecId[]}) => void) {
-        for (const id in this.roster) {
-            callback(id, this.roster[id]);
-        }
-    }    
-    */
-}
+        return playerSpecs.offSpecs.length < oldOffSpecsNb;
+    },
+};

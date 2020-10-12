@@ -1,27 +1,24 @@
-import { addMilliseconds, isPast } from 'date-fns';
+import { addMilliseconds, isPast, isValid, parse, set } from 'date-fns';
 import { GuildMember, Message, MessageEmbed, PartialUser, TextChannel, User } from 'discord.js';
 import schedule from 'node-schedule';
-import { logger } from '../../logger';
 import { startDMCommandForm } from '../../commands/dmCommands';
-import { DynamicEmbedMessage, ReactionAction, STATUS } from '../../DynamicEmbed';
-import { getSpecEmoji } from '../../emojis';
-import { getSpecTypePlus, isWowSpecId, SpecType, WowSpecs } from '../../model';
-import { BLANK, clear, EMQUAD, formatDate, formatList, formatObjective, getMember, localStartWith, notNull } from '../../utils/utils';
+import { DynamicEmbedMessage, MSG_STATUS, ReactionAction } from '../../DynamicEmbed';
+import { getSpecEmoji } from '../../utils/emojis';
+import { toSpecTypePlus, isWowSpecId, SpecType, WowSpecs } from '../../model';
+import {
+    logger,
+    BLANK,
+    clear,
+    EMQUAD,
+    formatDate,
+    formatList,
+    formatObjective,
+    getMember,
+    localStartWith,
+    notNull,
+    sendDM,
+} from '../../utils/utils';
 import { Roster, RosterManager } from '../roster/rosterManager';
-
-/* icons
-https://wow.zamimg.com/images/wow/icons/large/spell_holy_championsbond.jpg
-https://wow.zamimg.com/images/wow/icons/large/achievement_pvp_legion08.jpg
-https://wow.zamimg.com/images/wow/icons/large/achievement_bg_tophealer_eos.jpg
-https://wow.zamimg.com/images/wow/icons/large/spell_holy_borrowedtime.jpg
-https://wow.zamimg.com/images/wow/icons/large/inv_letter_20.jpg
-*/
-
-export interface RosterSetup {
-    tank: number;
-    heal: number;
-    dps: number;
-}
 
 export enum ParticipantStatus {
     PRESENT,
@@ -32,14 +29,14 @@ export enum ParticipantStatus {
 
 export interface CalendarLineup {
     [id: string]: {
-        status: ParticipantStatus, 
-        benchable?: boolean
-    }
+        status: ParticipantStatus;
+        benchable?: boolean;
+    };
 }
 
 export interface EventSetup {
     tank: number;
-    heal: number; 
+    heal: number;
     dps: number;
 }
 
@@ -53,25 +50,33 @@ const enum EMOJI {
 const typeId = 'ev';
 
 export class CalendarEvent extends DynamicEmbedMessage {
-    
     protected typeId = typeId;
 
     // getTime() is 13chars, can do <= 10 if we're really short on url chars encoding
-    get id() { return this.date.getTime().toString() } 
+    get id(): string {
+        return this.date.getTime().toString();
+    }
 
-    private static statusAction(emoji: string, status: ParticipantStatus): ReactionAction<CalendarEvent> {
+    private static statusAction(
+        emoji: string,
+        status: ParticipantStatus
+    ): ReactionAction<CalendarEvent> {
         return {
             emoji,
             button: true,
-            listener: function(r, u) {
+            listener: function (r, u) {
                 const res = this.setPlayerStatus(u.id, status);
                 if (res === null) {
-                    u.send('Tu dois selectionner une spé dans le roster avant de pouvoir t\'inscrire à un event\n' + this.specsRoster?.getLink());
+                    sendDM(
+                        u,
+                        'You must select at least one spec on the roster message before you can signup to events\n' +
+                            this.specsRoster?.getLink()
+                    );
                     return false;
                 }
-                
+
                 return res;
-            }
+            },
         };
     }
 
@@ -82,21 +87,21 @@ export class CalendarEvent extends DynamicEmbedMessage {
         {
             emoji: EMOJI.BENCH,
             button: false,
-            listener: function(r, u, removed) {
+            listener: function (r, u, removed) {
                 return this.setPlayerMood(u.id, !removed);
-            }
+            },
         },
         {
             emoji: '🛠️',
             permision: 'SEND_MESSAGES',
             button: true,
-            listener: function(r, u,) {
+            listener: function (r, u) {
                 // would need to return an observable cause configurationForm can make multiple changes
                 // for the moment we use the refresh() function for each changes
                 this.configurationForm(u);
                 return false;
-            }
-        }
+            },
+        },
     ];
 
     // delay in ms at which the event should be considered closed (0 to be right on event time)
@@ -104,53 +109,93 @@ export class CalendarEvent extends DynamicEmbedMessage {
 
     private scheduleClose: schedule.Job;
 
-    constructor(channel: TextChannel, messages: Message[], private date: Date, private specsRoster: Roster | undefined,
-        private setup: EventSetup = {tank: 2, heal: 4, dps: 14}, private desc?: string | null, private lineup: CalendarLineup = {}
-        ) {
+    constructor(
+        channel: TextChannel,
+        messages: Message[],
+        private date: Date,
+        private specsRoster: Roster | undefined,
+        private setup: EventSetup = { tank: 2, heal: 4, dps: 14 },
+        private desc?: string | null,
+        private iconUrl?: string | null,
+        private lineup: CalendarLineup = {}
+    ) {
         super(channel, messages);
 
         if (this.specsRoster == null) {
-            this.errors.push(new Error('Can\'t find roster'));
-            this.status = STATUS.ERROR;
+            this.errors.push(new Error("Can't find roster"));
+            this.status = MSG_STATUS.ERROR;
         }
 
-        this.scheduleClose = schedule.scheduleJob(addMilliseconds(date, CalendarEvent.closingDelay), () => this.close());
+        this.scheduleClose = schedule.scheduleJob(
+            addMilliseconds(date, CalendarEvent.closingDelay),
+            () => this.close()
+        );
     }
 
-    public static async create(channel: TextChannel, date: Date, specsRoster: Roster, setup?: EventSetup, desc?: string | null): Promise<CalendarEvent> {
-        const instance = new CalendarEvent(channel, [await channel.send(BLANK)], date, specsRoster, setup, desc);        
+    public static async create(
+        channel: TextChannel,
+        date: Date,
+        specsRoster: Roster,
+        setup?: EventSetup,
+        desc?: string | null,
+        iconUrl?: string | null
+    ): Promise<CalendarEvent> {
+        const instance = new CalendarEvent(
+            channel,
+            [await channel.send(BLANK)],
+            date,
+            specsRoster,
+            setup,
+            desc,
+            iconUrl
+        );
         await instance.init();
-        
+
         return instance;
     }
 
     public static async load(channel: TextChannel): Promise<CalendarEvent[]> {
         const isOutdated = (dateStr: string) => isPast(new Date(parseInt(dateStr)));
-        
+
         // first message outdated
         let stopId: string | null = null; // don't set undefined in case lastMatch.id is undefined
-       
-        const foundEvents = await DynamicEmbedMessage.findExistingMessages(channel, 
-            // create a real function rather than this cheaty oneliner 
-            (type, date, msg) => type === typeId && (!isOutdated(date) || !(stopId = msg.id)), 
-            (lastMatch) => lastMatch != null && lastMatch.id === stopId
+
+        const foundEvents = await DynamicEmbedMessage.findExistingMessages(
+            channel,
+            // create a real function rather than this cheaty oneliner
+            (type, date, msg) => type === typeId && (!isOutdated(date) || !(stopId = msg.id)),
+            lastMatch => lastMatch != null && lastMatch.id === stopId
         );
-        return Promise.all(foundEvents
-            .map(parsedRoster => {
-                try {
-                    const data = CalendarEvent.decodeData(parsedRoster.pathData, parsedRoster.paramData);
+        return Promise.all(
+            foundEvents
+                .map(parsedRoster => {
+                    try {
+                        const data = CalendarEvent.decodeData(
+                            parsedRoster.pathData,
+                            parsedRoster.paramData
+                        );
 
-                    const instance = new CalendarEvent(channel, [parsedRoster.messages], 
-                        new Date(parseInt(parsedRoster.id)), RosterManager.getRosterManager().getRoster(data.specsRoster), data.setup, data.desc, data.lineup
-                    );
+                        const instance = new CalendarEvent(
+                            channel,
+                            [parsedRoster.messages],
+                            new Date(parseInt(parsedRoster.id)),
+                            RosterManager.get().getRoster(data.specsRoster),
+                            data.setup,
+                            data.desc,
+                            // todo encode iconurl on url or keep this exception ?
+                            parsedRoster.messages.embeds[0].thumbnail?.url,
+                            data.lineup
+                        );
 
-                    return instance.init().then(() => instance);
-                } catch(e) {
-                    logger.error('error loading event ', parsedRoster.id);
-                    DynamicEmbedMessage.renderError(parsedRoster.messages, [new Error('Parsing error: ' + e)]);
-                }
-            })
-            .filter(notNull)
+                        return instance.init().then(() => instance);
+                    } catch (e) {
+                        logger.error('error loading event ' + parsedRoster.id);
+                        DynamicEmbedMessage.renderError(parsedRoster.messages, [
+                            new Error('Parsing error: %s' + e),
+                        ]);
+                    }
+                })
+                .filter(notNull)
         );
     }
 
@@ -160,14 +205,21 @@ export class CalendarEvent extends DynamicEmbedMessage {
         await this.setupReactions(CalendarEvent.actions);
     }
 
-    protected encodeData(): { pathData?: string[] | undefined; paramData?: { [name: string]: string | string[]; } | undefined; } {
+    protected encodeData(): {
+        pathData?: string[] | undefined;
+        paramData?: { [name: string]: string | string[] } | undefined;
+    } {
         return {
-            pathData: [this.specsRoster?.id || '0', CalendarEvent.encodeSetup(this.setup), this.desc || ''],
+            pathData: [
+                this.specsRoster?.id || '0',
+                CalendarEvent.encodeSetup(this.setup),
+                this.desc || '',
+            ],
             paramData: CalendarEvent.encodeLineup(this.lineup),
-        }
+        };
     }
 
-    protected static decodeData(pathData: string[], paramData: {[id: string]: string[]}) {
+    private static decodeData(pathData: string[], paramData: { [id: string]: string[] }) {
         return {
             specsRoster: pathData[0],
             setup: CalendarEvent.decodeSetup(pathData[1]),
@@ -177,7 +229,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
         };
     }
 
-    private static decodeLineup(params: {[name: string]: string[]}) {
+    private static decodeLineup(params: { [name: string]: string[] }) {
         const lineup: CalendarLineup = {};
 
         for (const playerId in params) {
@@ -190,27 +242,27 @@ export class CalendarEvent extends DynamicEmbedMessage {
                     throw 'invalid status: ' + status;
                 }
             } catch (e) {
-                logger.error('failed decoding lineup for ' + playerId, e);
+                logger.error('failed decoding lineup for %s: %s', playerId, e);
                 continue;
             }
 
             lineup[playerId] = {
                 status,
                 benchable: values.length > 1 && values[1] === 'benchable',
-            }
+            };
         }
 
         return lineup;
     }
 
     private static encodeLineup(lineup: CalendarLineup) {
-        const params: {[id: string]: string[]} = {}
+        const params: { [id: string]: string[] } = {};
         for (const playerId in lineup) {
             const status = lineup[playerId];
 
             const encodedStatus = [status.status.toString()];
             if (status.benchable) {
-                encodedStatus.push('benchable')
+                encodedStatus.push('benchable');
             }
 
             params[playerId] = encodedStatus;
@@ -229,9 +281,9 @@ export class CalendarEvent extends DynamicEmbedMessage {
                 heal: parseInt(matchArray[1][0]) || 0,
                 dps: parseInt(matchArray[2][0]) || 0,
             };
-        } catch(e) { 
+        } catch (e) {
             logger.error('failed parsing setup: ', e);
-            return {tank: 2, heal: 4, dps: 14};
+            return { tank: 2, heal: 4, dps: 14 };
         }
     }
 
@@ -242,31 +294,38 @@ export class CalendarEvent extends DynamicEmbedMessage {
     /* TODO we're using 3 returns, set as expected, not set cause already set and not set cause no spec could be found
      * using boolean + null atm but need to do better, number or boolean + throw
      */
-    setPlayerStatus(userId: string, status: ParticipantStatus) {
-        if (this.lineup[userId]?.status != status) {
+    setPlayerStatus(userId: string, status: ParticipantStatus): boolean | null {
+        if (this.lineup[userId]?.status !== status) {
             const spec = this.specsRoster?.getMainSpec(userId);
-            if (spec == null) {                
+            if (spec == null) {
                 return null;
             }
 
-            this.lineup[userId] = {status, benchable: this.lineup[userId]?.benchable};
+            this.lineup[userId] = {
+                status,
+                benchable: this.lineup[userId]?.benchable,
+            };
             return true;
         }
 
         return false;
     }
 
-    setPlayerMood(userId: string, benchable = true) {
-        if (this.lineup[userId]?.benchable != benchable) {
-            this.lineup[userId] = {status: this.lineup[userId]?.status, benchable};
+    setPlayerMood(userId: string, benchable = true): boolean {
+        if (this.lineup[userId]?.benchable !== benchable) {
+            this.lineup[userId] = {
+                status: this.lineup[userId]?.status,
+                benchable,
+            };
             return true;
         }
 
         return false;
     }
 
+    /*eslint complexity: [warn, 12]*/
     protected generateMessage(): MessageEmbed {
-        const present: string[][] = [[],[],[],[]];
+        const present: string[][] = [[], [], [], []];
         const absent: string[] = [];
         const bench: string[] = [];
 
@@ -277,20 +336,24 @@ export class CalendarEvent extends DynamicEmbedMessage {
             const user = getMember(chan, playerId)?.user;
 
             if (user == null) {
-                logger.warn('missing user', playerId);
+                logger.warn('missing user ' + playerId);
                 continue;
             }
 
-            switch(status) {
-                case ParticipantStatus.LATE:                      
-                case ParticipantStatus.PRESENT:                
+            switch (status) {
+                case ParticipantStatus.LATE:
+                case ParticipantStatus.PRESENT:
                     const specId = this.specsRoster?.getMainSpec(playerId);
                     // TODO
                     if (specId == null || !isWowSpecId(specId)) continue;
 
-                    const extra = (status === ParticipantStatus.LATE ? ' ' + EMOJI.LATE : '') + (this.lineup[playerId].benchable === true ? ' ' + EMOJI.BENCH : '');
+                    const extra =
+                        (status === ParticipantStatus.LATE ? ' ' + EMOJI.LATE : '') +
+                        (this.lineup[playerId].benchable === true ? ' ' + EMOJI.BENCH : '');
 
-                    present[getSpecTypePlus(WowSpecs[specId])].push(getSpecEmoji(WowSpecs[specId])?.toString() + user.toString() + extra);
+                    present[toSpecTypePlus(WowSpecs[specId])].push(
+                        getSpecEmoji(WowSpecs[specId])?.toString() + user.toString() + extra
+                    );
                     break;
                 case ParticipantStatus.ABSENT:
                     absent.push(user.toString());
@@ -305,55 +368,97 @@ export class CalendarEvent extends DynamicEmbedMessage {
         const requiredNb = this.setup.tank + this.setup.heal + this.setup.dps;
         const missingNb = Math.max(0, requiredNb - presetnNb);
 
-        const msg = new MessageEmbed()            
-            .setThumbnail('https://wow.zamimg.com/images/wow/icons/large/spell_holy_championsbond.jpg')
-            .setTitle(formatDate(this.date))
-        
+        const msg = new MessageEmbed().setTitle(formatDate(this.date));
+
         if (this.desc != null) {
             msg.setDescription(this.desc);
         }
 
-        msg.addField('Setup', 
-                formatObjective(this.setup.tank, present[SpecType.TANK].length, this.setup.tank) + 
-                '-' + 
-                formatObjective(this.setup.heal, present[SpecType.HEAL].length, this.setup.heal) + 
-                '-' + 
-                formatObjective(this.setup.dps, present[SpecType.DPS].length + present[SpecType.DPS + 1].length, this.setup.dps) + 
-                '\n\u200b', 
-            true)
-            .addField('Inscrit', formatObjective(presetnNb, presetnNb, requiredNb), true)
-            .addField('Manquant', missingNb, true);
+        if (this.iconUrl != null) {
+            msg.setThumbnail(this.iconUrl);
+        }
 
-        DynamicEmbedMessage.add3columnFields(msg, '__TANKS__  (' + present[SpecType.TANK].length + ')', present[SpecType.TANK]);
-        DynamicEmbedMessage.add3columnFields(msg, '__HEALS__  (' + present[SpecType.HEAL].length + ')', present[SpecType.HEAL]);
-        DynamicEmbedMessage.add3columnFields(msg, '__DPS__  (' + (present[SpecType.DPS].length+present[SpecType.DPS+1].length) + ') *(c:' + present[SpecType.DPS].length + ',r:' + present[SpecType.DPS + 1].length + ')*', present[SpecType.DPS], present[SpecType.DPS+1]);
+        msg.addField(
+            'Setup',
+            formatObjective(this.setup.tank, present[SpecType.TANK].length, this.setup.tank) +
+                '-' +
+                formatObjective(this.setup.heal, present[SpecType.HEAL].length, this.setup.heal) +
+                '-' +
+                formatObjective(
+                    this.setup.dps,
+                    present[SpecType.DPS].length + present[SpecType.DPS + 1].length,
+                    this.setup.dps
+                ) +
+                '\n\u200b',
+            true
+        )
+            .addField('Present', formatObjective(presetnNb, presetnNb, requiredNb), true)
+            .addField('Missing', missingNb, true);
+
+        DynamicEmbedMessage.add3columnFields(
+            msg,
+            '__TANKS__  (' + present[SpecType.TANK].length + ')',
+            present[SpecType.TANK]
+        );
+        DynamicEmbedMessage.add3columnFields(
+            msg,
+            '__HEALS__  (' + present[SpecType.HEAL].length + ')',
+            present[SpecType.HEAL]
+        );
+        DynamicEmbedMessage.add3columnFields(
+            msg,
+            '__DPS__  (' +
+                (present[SpecType.DPS].length + present[SpecType.DPS + 1].length) +
+                ') *(c:' +
+                present[SpecType.DPS].length +
+                ',r:' +
+                present[SpecType.DPS + 1].length +
+                ')*',
+            present[SpecType.DPS],
+            present[SpecType.DPS + 1]
+        );
 
         // using EM Quad to ease parsing, it's our separator between label and values. Also better visually.
-        msg.addField(BLANK, '**Absents (' + absent.length + ')**' + EMQUAD + formatList(absent) + '\n**Bench (' + bench.length + ')**' + EMQUAD + formatList(bench));
+        msg.addField(
+            BLANK,
+            '**Absents (' +
+                absent.length +
+                ')**' +
+                EMQUAD +
+                formatList(absent) +
+                '\n**Bench (' +
+                bench.length +
+                ')**' +
+                EMQUAD +
+                formatList(bench)
+        );
 
         return msg;
     }
 
     private async configurationForm(u: User | PartialUser) {
-        await startDMCommandForm(this, u, {
-            welcomeMessage: 'Quels changements voulez-vous appliquer à l\'évènement ?',
+        logger.verbose('start configuration form with ' + u.id);
+
+        await startDMCommandForm(u, {
+            welcomeMessage: 'What changes do you want to apply to this event ?',
             commands: {
-                'set': {
-                    description: '`set user1 user2 ... statut? benchable?`',
-                    helpMessage: `Vous pouvez set un ou plusieurs utilisateurs avec le même statut (present/absent/retard/bench).
-                    statut et benchable sont optionel et son par defaut : present et non-benchable.
-                    le nom des joueurs n'as pas besoin d'être complet, un début suffit mais si 2 joueurs ont un nom avec le même début un seul sera ajouter.
-                    /!\ La recherche de nom s'effectue sur le nom affiché sur le serveur ET le nom d'utilisateur global.
-                    exemples:
+                set: {
+                    description: '`set user1 user2 ... status? benchable?`',
+                    helpMessage: `You can set one or several player with the same status (present/absent/late/bench).
+                    'status' and 'benchable' are optional and are by default: present and non-benchable.
+                    Player's name does not need to be full, a partial name is enough but if it matches several player only one will be set.
+                    /!\ Player's name can match either the *display name* on the server or *discord username*.
+                    examples:
                         \`set nekros reck absent\`
                         \`set era wak absent benchable\`
                         \`set bamleprètre\`
                         \`set essa benchable\`
                     `,
-                    callback: function(args: string[]) {
+                    /*eslint complexity: [warn, 15]*/
+                    callback: (args: string[]) => {
                         // must be sync with ParticipantStatus, don't like that very much
                         const statusStr = ['present', 'late', 'absent', 'bench'];
-                        const members = (this.message.channel as TextChannel).members;                      
+                        const members = (this.message.channel as TextChannel).members;
 
                         let statusIdx = 0;
                         let status = ParticipantStatus.PRESENT;
@@ -361,14 +466,18 @@ export class CalendarEvent extends DynamicEmbedMessage {
 
                         const players: GuildMember[] = [];
                         const playersNotFound: string[] = [];
-                        
+
                         for (const w of args) {
-                            if (w == 'benchable') {
+                            if (w === 'benchable') {
                                 benchable = true;
-                            } else if ( (statusIdx = statusStr.findIndex(v => v === w)) >= 0) {
+                            } else if ((statusIdx = statusStr.findIndex(v => v === w)) >= 0) {
                                 status = statusIdx;
                             } else {
-                                const player = members.find(m => localStartWith(clear(m.displayName), w) || localStartWith(clear(m.user.username), w));
+                                const player = members.find(
+                                    m =>
+                                        localStartWith(clear(m.displayName), w) ||
+                                        localStartWith(clear(m.user.username), w)
+                                );
                                 if (player != null) {
                                     players.push(player);
                                 } else {
@@ -377,8 +486,8 @@ export class CalendarEvent extends DynamicEmbedMessage {
                             }
                         }
 
-                        if (players.length == 0) {
-                            return 'aucun joueur trouvé !';
+                        if (players.length === 0) {
+                            return 'No player found!';
                         }
 
                         const playerAdded = [];
@@ -387,11 +496,11 @@ export class CalendarEvent extends DynamicEmbedMessage {
 
                         for (const p of players) {
                             // todo setMood ?
-                            const result = this.setPlayerStatus(p.user.id, status)
+                            const result = this.setPlayerStatus(p.user.id, status);
                             this.setPlayerMood(p.user.id, benchable);
 
-                            switch(result) {
-                                case true :
+                            switch (result) {
+                                case true:
                                     playerAdded.push(p.displayName);
                                     break;
                                 case false:
@@ -401,26 +510,34 @@ export class CalendarEvent extends DynamicEmbedMessage {
                                     playerNoSpec.push(p.displayName);
                             }
                         }
-                        this.refresh();
 
                         let feedback = '';
 
-
                         if (playerAdded.length > 0) {
-                            feedback += 'joueurs ajouté avec le status *' + statusStr[status] + '* ' + (benchable ? 'et *benchable*' : '') + ' : ' + formatList(playerAdded);
+                            feedback +=
+                                'player added with status *' +
+                                statusStr[status] +
+                                '* ' +
+                                (benchable ? 'and *benchable*' : '') +
+                                ' : ' +
+                                formatList(playerAdded);
                         }
                         // this one is optional
                         if (playerAlreadySet.length > 0) {
-                            feedback += '\nJoueurs qui avait déjà le même status: ' + formatList(playerAlreadySet);
+                            feedback +=
+                                '\nPlayers not changed cause they already had the same status: ' +
+                                formatList(playerAlreadySet);
                         }
                         if (playerNoSpec.length > 0) {
-                            feedback += '\njoueurs n\'ayant pas été ajouté car ils ne sont pas inscrit dans le roster: ' + formatList(playerNoSpec);
+                            feedback +=
+                                "\nPlayers not added because they're missing from the roster: " +
+                                formatList(playerNoSpec);
                         }
                         if (playersNotFound.length > 0) {
-                            feedback += '\nJoueur(s) non trouvé(s) : ' + formatList(playersNotFound);
+                            feedback += '\nPlayer(s) not found: ' + formatList(playersNotFound);
                         }
 
-                        return feedback;
+                        return [this.generateMessage(), feedback];
                     },
                 },
                 /*
@@ -430,41 +547,85 @@ export class CalendarEvent extends DynamicEmbedMessage {
                     callback: () => {},
                 },
                 */
-                'date': {
+                date: {
                     description: '`date jjmm`',
-                    helpMessage: '',
-                    callback: () => {},
+                    helpMessage: 'set day and month of event',
+                    callback: ([dateStr]: string[]) => {
+                        if (dateStr == null) {
+                            return 'missing date';
+                        }
+
+                        const newDate = parse(dateStr, 'ddMM', this.date);
+                        if (!isValid(newDate)) {
+                            return 'invalid date';
+                        }
+
+                        this.date = set(this.date, {
+                            date: newDate.getDate(),
+                            month: newDate.getMonth(),
+                        });
+
+                        return this.generateMessage();
+                    },
                 },
-                'time': {
+                time: {
                     description: '`time hhmm`',
-                    helpMessage: '',
-                    callback: () => {},
+                    helpMessage: 'set hour and minutes of event',
+                    callback: ([dateStr]: string[]) => {
+                        if (dateStr == null) {
+                            return 'missing date';
+                        }
+
+                        const newDate = parse(dateStr, 'hhmm', this.date);
+                        if (!isValid(newDate)) {
+                            return 'invalid date';
+                        }
+
+                        this.date = set(this.date, {
+                            hours: newDate.getHours(),
+                            minutes: newDate.getMinutes(),
+                        });
+
+                        return this.generateMessage();
+                    },
                 },
-                'desc': {
-                    description: '`desc nouvelle description`',
-                    helpMessage: '',
-                    callback: () => {},
+                desc: {
+                    description: '`desc new description`',
+                    helpMessage: 'set the new description. Only 1 line is permitted at the moment',
+                    callback: (args: string[], answer) => {
+                        if (args.length === 0) {
+                            return 'missing description';
+                        }
+
+                        // /!\ 5 is linked to command name
+                        this.desc = answer.slice(5);
+
+                        return this.generateMessage();
+                    },
                 },
-            }
-        }); 
+            },
+        });
+
+        // TODO only if we actually did changes
+        this.refresh();
     }
 
-    public async cancel() {
+    public async cancel(): Promise<void> {
         this.scheduleClose.cancel();
         await this.disconnect();
         await this.message.delete();
     }
 
     private close() {
-        this.status = STATUS.CLOSE;
+        this.status = MSG_STATUS.CLOSE;
         this.refresh();
         this.disconnect();
     }
 
-    protected async disconnect() {
+    protected async disconnect(): Promise<void> {
         await super.disconnect();
         if (!this.message.deleted) {
-            await this.message.reactions.removeAll(); 
+            await this.message.reactions.removeAll();
         }
     }
 }

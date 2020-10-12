@@ -1,30 +1,34 @@
 import { Guild, TextChannel } from 'discord.js';
-import { logger } from '../../logger';
 import { EventManager, FeedbackError } from '../../utils/eventManager';
-import { isTextChannel } from '../../utils/utils';
+import { isProd, isTextChannel, logger } from '../../utils/utils';
 import { RosterManager } from './rosterManager';
 import { RosterMessage } from './rostermessage';
 
-EventManager.getEventManager().registerCommand('roster', async(m) => {
+EventManager.get().registerCommand('roster', async m => {
     if (isTextChannel(m.message.channel)) {
         const title = m.reader.getString();
         if (title != null && title.length > 0) {
             const rosterMsg = await RosterMessage.create(m.message.channel, title);
 
             if (m.reader.getString() === 'default') {
-                RosterManager.getRosterManager().setDefaultRoster(rosterMsg.id);
+                RosterManager.get().setDefaultRoster(rosterMsg.id);
             }
         } else {
-            throw new FeedbackError('no title find');
+            throw new FeedbackError('no title found');
         }
     }
 });
 
-export function onGuildInit(g: Guild) {
-    const channel = g.channels.cache.find(c => c.name === 'test-bot' && isTextChannel(c));
+export async function onGuildInit(g: Guild): Promise<void> {
+    const channel = g.channels.cache.find(
+        c => c.name.indexOf(isProd() ? 'calendar' : 'test-bot') >= 0 && isTextChannel(c)
+    );
 
     if (channel != null) {
-        return RosterMessage.load(channel as TextChannel)
-            .then(v => v.forEach(rm => logger.info('loaded roster message: ', rm.title)));
+        (await RosterMessage.load(channel as TextChannel)).forEach(rm =>
+            logger.info('loaded roster message: ' + rm.title)
+        );
+    } else {
+        logger.warn('Missing roster channel');
     }
 }
