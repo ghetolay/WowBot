@@ -223,18 +223,22 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
             backupSpecs[SpecType.HEAL],
             backupSpecs[SpecType.HEAL].length > 0 ? DynamicEmbedMessage.BLANK_LINE : [],
 
-            DynamicEmbedMessage.BLANK_LINE,
+            DynamicEmbedMessage.BLANK_LINE
+        );
+        // split into more fields otherwise we may reach limite of 1024 chars per columns on a single field
+        DynamicEmbedMessage.add3columnFields(
+            msg,
+            `**__DPS:__  (${
+                mainSpecs[SpecType.DPS].length + mainSpecs[SpecType.DPS + 1].length
+            }) *(m:${mainSpecs[SpecType.DPS].length},r:${mainSpecs[SpecType.DPS + 1].length})***`,
 
-            [
-                `**__DPS:__  (${
-                    mainSpecs[SpecType.DPS].length + mainSpecs[SpecType.DPS + 1].length
-                }) *(m:${mainSpecs[SpecType.DPS].length},r:${
-                    mainSpecs[SpecType.DPS + 1].length
-                })***`,
-            ],
             mainSpecs[SpecType.DPS],
-            mainSpecs[SpecType.DPS + 1],
-            DynamicEmbedMessage.BLANK_LINE,
+            mainSpecs[SpecType.DPS + 1]
+        );
+
+        DynamicEmbedMessage.add3columnFields(
+            msg,
+            BLANK,
             backupSpecs[SpecType.DPS].concat(backupSpecs[SpecType.DPS + 1])
         );
 
