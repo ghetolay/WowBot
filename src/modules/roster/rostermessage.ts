@@ -211,19 +211,19 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
             msg,
             `**__TANKS:__  (${mainSpecs[SpecType.TANK].length})**`,
             mainSpecs[SpecType.TANK],
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
             backupSpecs[SpecType.TANK],
-            backupSpecs[SpecType.TANK].length > 0 ? [BLANK] : [],
+            backupSpecs[SpecType.TANK].length > 0 ? DynamicEmbedMessage.BLANK_LINE : [],
 
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
 
             [`**__HEALS:__  (${mainSpecs[SpecType.HEAL].length})**`],
             mainSpecs[SpecType.HEAL],
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
             backupSpecs[SpecType.HEAL],
-            backupSpecs[SpecType.HEAL].length > 0 ? [BLANK] : [],
+            backupSpecs[SpecType.HEAL].length > 0 ? DynamicEmbedMessage.BLANK_LINE : [],
 
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
 
             [
                 `**__DPS:__  (${
@@ -234,7 +234,7 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
             ],
             mainSpecs[SpecType.DPS],
             mainSpecs[SpecType.DPS + 1],
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
             backupSpecs[SpecType.DPS].concat(backupSpecs[SpecType.DPS + 1])
         );
 

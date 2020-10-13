@@ -458,7 +458,7 @@ export abstract class DynamicEmbedMessage {
 
     /**
      * Display strings in a grid of 3 columns. Each lines will take place in at least 1 line separated from the previous one.
-     * Empty array won't display anything, if you want a visually empty line you should use an array fill with BLANK `[BLANK]`
+     * Empty array won't display anything, if you want a visually empty line you should use `BLANK_LINE`.
      * Since a title is just a value with a bold visual effect you can add titles using makrdown to bold it. /!\ If you do so,
      * be aware that title bold is slighty smaller (600) than bold done by markdown (700) so you should probably also bold the
      * title using markdown in this case.
@@ -496,4 +496,6 @@ export abstract class DynamicEmbedMessage {
         message.addField(BLANK, columns[1].length === 0 ? BLANK : columns[1], true);
         message.addField(BLANK, columns[2].length === 0 ? BLANK : columns[2], true);
     }
+
+    static readonly BLANK_LINE = [BLANK];
 }

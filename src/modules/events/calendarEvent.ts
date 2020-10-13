@@ -400,12 +400,12 @@ export class CalendarEvent extends DynamicEmbedMessage {
             '**__TANKS__  (' + present[SpecType.TANK].length + ')**',
             present[SpecType.TANK],
 
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
 
             ['**__HEALS__  (' + present[SpecType.HEAL].length + ')**'],
             present[SpecType.HEAL],
 
-            [BLANK],
+            DynamicEmbedMessage.BLANK_LINE,
 
             [
                 '**__DPS__  (' +
@@ -419,7 +419,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
             present[SpecType.DPS],
             present[SpecType.DPS + 1],
 
-            [BLANK]
+            DynamicEmbedMessage.BLANK_LINE
         );
 
         // using EM Quad to ease parsing, it's our separator between label and values. Also better visually.
