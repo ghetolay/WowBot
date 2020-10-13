@@ -456,38 +456,40 @@ export abstract class DynamicEmbedMessage {
 
     // ----- Utilities -----
 
-    /*eslint complexity: [warn, 11]*/
+    /**
+     * Display strings in a grid of 3 columns. Each lines will take place in at least 1 line separated from the previous one.
+     * Empty array won't display anything, if you want a visually empty line you should use an array fill with BLANK `[BLANK]`
+     * Since a title is just a value with a bold visual effect you can add titles using makrdown to bold it. /!\ If you do so,
+     * be aware that title bold is slighty smaller (600) than bold done by markdown (700) so you should probably also bold the
+     * title using markdown in this case.
+     *
+     * @param message
+     * @param title Main title to set on first line
+     * @param lines Array of lines to display
+     */
+    /*eslint complexity: [warn, 12]*/
     static add3columnFields(
         message: MessageEmbed,
-        title: string | null,
-        values: string[],
-        values2?: string[]
+        title?: string | null,
+        ...lines: string[][]
     ): void {
-        if (title == null && values.length === 0) {
+        if (title == null && lines.length === 0) {
             return;
         }
 
         const columns: string[][] = [[], [], []];
 
-        const pushValues = (vList: string[]) => {
-            let i = 0;
-            for (const v of vList) {
-                columns[i++ % 3].push(v);
+        for (const lineValues of lines) {
+            if (lineValues.length === 0) continue;
+
+            for (let i = 0; i < lineValues.length; i++) {
+                columns[i % 3].push(lineValues[i]);
             }
-        };
 
-        pushValues(values);
-
-        if (values2 != null && values2.length > 0) {
             // fill with blank to create a *newline* effect
             const size = columns[0].length;
-            for (let i = 1; i < 3; i++) {
-                if (columns[i].length < size) {
-                    columns[i].push(BLANK);
-                }
-            }
-
-            pushValues(values2);
+            if (columns[1].length < size) columns[1].push(BLANK);
+            if (columns[2].length < size) columns[2].push(BLANK);
         }
 
         message.addField(title || BLANK, columns[0].length === 0 ? BLANK : columns[0], true);

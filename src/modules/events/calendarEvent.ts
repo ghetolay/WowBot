@@ -397,25 +397,29 @@ export class CalendarEvent extends DynamicEmbedMessage {
 
         DynamicEmbedMessage.add3columnFields(
             msg,
-            '__TANKS__  (' + present[SpecType.TANK].length + ')',
-            present[SpecType.TANK]
-        );
-        DynamicEmbedMessage.add3columnFields(
-            msg,
-            '__HEALS__  (' + present[SpecType.HEAL].length + ')',
-            present[SpecType.HEAL]
-        );
-        DynamicEmbedMessage.add3columnFields(
-            msg,
-            '__DPS__  (' +
-                (present[SpecType.DPS].length + present[SpecType.DPS + 1].length) +
-                ') *(c:' +
-                present[SpecType.DPS].length +
-                ',r:' +
-                present[SpecType.DPS + 1].length +
-                ')*',
+            '**__TANKS__  (' + present[SpecType.TANK].length + ')**',
+            present[SpecType.TANK],
+
+            [BLANK],
+
+            ['**__HEALS__  (' + present[SpecType.HEAL].length + ')**'],
+            present[SpecType.HEAL],
+
+            [BLANK],
+
+            [
+                '**__DPS__  (' +
+                    (present[SpecType.DPS].length + present[SpecType.DPS + 1].length) +
+                    ') *(c:' +
+                    present[SpecType.DPS].length +
+                    ',r:' +
+                    present[SpecType.DPS + 1].length +
+                    ')***',
+            ],
             present[SpecType.DPS],
-            present[SpecType.DPS + 1]
+            present[SpecType.DPS + 1],
+
+            [BLANK]
         );
 
         // using EM Quad to ease parsing, it's our separator between label and values. Also better visually.

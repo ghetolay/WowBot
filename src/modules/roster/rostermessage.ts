@@ -203,36 +203,38 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
         const msg = new MessageEmbed()
             .setColor('#0000ff')
             .setTitle(this.title)
-            //.setAuthor(this.title)
             //TODO .setDescription()
 
             .addField('Total: ' + mainSpecs.reduce((c, l) => (c += l.length), 0), BLANK);
-        DynamicEmbedMessage.add3columnFields(
-            msg,
-            `__TANKS:__  (${mainSpecs[SpecType.TANK].length})`,
-            mainSpecs[SpecType.TANK]
-        );
-        DynamicEmbedMessage.add3columnFields(msg, null, backupSpecs[SpecType.TANK]);
 
         DynamicEmbedMessage.add3columnFields(
             msg,
-            `__HEALS:__  (${mainSpecs[SpecType.HEAL].length})`,
-            mainSpecs[SpecType.HEAL]
-        );
-        DynamicEmbedMessage.add3columnFields(msg, null, backupSpecs[SpecType.HEAL]);
+            `**__TANKS:__  (${mainSpecs[SpecType.TANK].length})**`,
+            mainSpecs[SpecType.TANK],
+            [BLANK],
+            backupSpecs[SpecType.TANK],
+            backupSpecs[SpecType.TANK].length > 0 ? [BLANK] : [],
 
-        DynamicEmbedMessage.add3columnFields(
-            msg,
-            `__DPS:__  (${
-                mainSpecs[SpecType.DPS].length + mainSpecs[SpecType.DPS + 1].length
-            }) *(m:${mainSpecs[SpecType.DPS].length},r:${mainSpecs[SpecType.DPS + 1].length})*`,
+            [BLANK],
+
+            [`**__HEALS:__  (${mainSpecs[SpecType.HEAL].length})**`],
+            mainSpecs[SpecType.HEAL],
+            [BLANK],
+            backupSpecs[SpecType.HEAL],
+            backupSpecs[SpecType.HEAL].length > 0 ? [BLANK] : [],
+
+            [BLANK],
+
+            [
+                `**__DPS:__  (${
+                    mainSpecs[SpecType.DPS].length + mainSpecs[SpecType.DPS + 1].length
+                }) *(m:${mainSpecs[SpecType.DPS].length},r:${
+                    mainSpecs[SpecType.DPS + 1].length
+                })***`,
+            ],
             mainSpecs[SpecType.DPS],
-            mainSpecs[SpecType.DPS + 1]
-        );
-
-        DynamicEmbedMessage.add3columnFields(
-            msg,
-            null,
+            mainSpecs[SpecType.DPS + 1],
+            [BLANK],
             backupSpecs[SpecType.DPS].concat(backupSpecs[SpecType.DPS + 1])
         );
 
