@@ -447,16 +447,20 @@ export class CalendarEvent extends DynamicEmbedMessage {
             welcomeMessage: 'What changes do you want to apply to this event ?',
             commands: {
                 set: {
-                    description: '`set user1 user2 ... status? benchable?`',
-                    helpMessage: `You can set one or several player with the same status (present/absent/late/bench).
+                    description: '`set player1 player2 ... status? benchable?`',
+                    helpMessage: `set player's status.
+                    Player can be designed by name or id.
+                    Players reffered by name does not need to be complete, a partial name is enough but if 
+                    it matches several players only the first one in alphabetical order will be set.
+                    Player's name can match either the *display name* on the server or *discord username*.
+                    You can set one or several player with the same status (present/absent/late/bench).
                     'status' and 'benchable' are optional and are by default: present and non-benchable.
-                    Player's name does not need to be full, a partial name is enough but if it matches several player only one will be set.
-                    /!\ Player's name can match either the *display name* on the server or *discord username*.
                     examples:
                         \`set nekros reck absent\`
                         \`set era wak absent benchable\`
                         \`set bamleprètre\`
                         \`set essa benchable\`
+                        \`set 256696214754874677 present\`
                     `,
                     /*eslint complexity: [warn, 15]*/
                     callback: (args: string[]) => {
@@ -477,13 +481,18 @@ export class CalendarEvent extends DynamicEmbedMessage {
                             } else if ((statusIdx = statusStr.findIndex(v => v === w)) >= 0) {
                                 status = statusIdx;
                             } else {
-                                const player = members.find(
-                                    m =>
-                                        localStartWith(clear(m.displayName), w) ||
-                                        localStartWith(clear(m.user.username), w)
-                                );
-                                if (player != null) {
-                                    players.push(player);
+                                const matchingPlayers = members
+                                    .filter(
+                                        m =>
+                                            m.id === w ||
+                                            localStartWith(clear(m.displayName), w) ||
+                                            localStartWith(clear(m.user.username), w)
+                                    )
+                                    .sort((a, b) =>
+                                        clear(a.displayName).localeCompare(clear(b.displayName))
+                                    );
+                                if (matchingPlayers.size > 0) {
+                                    players.push(matchingPlayers.first()!);
                                 } else {
                                     playersNotFound.push(w);
                                 }
