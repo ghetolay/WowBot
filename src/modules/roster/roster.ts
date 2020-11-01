@@ -42,6 +42,15 @@ export const RosterUtils = {
                 offSpecs: [],
             };
         } else {
+            // remove main spec from offspecs if present
+            playerSpecs.offSpecs = playerSpecs.offSpecs.filter(s => s !== mainSpecId);
+
+            // set current main spec as offspec
+            if (playerSpecs.mainSpec != null) {
+                playerSpecs.offSpecs.push(playerSpecs.mainSpec);
+            }
+
+            // set new main spec
             playerSpecs.mainSpec = mainSpecId;
         }
     },

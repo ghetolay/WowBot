@@ -111,24 +111,49 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
         return instance;
     }
 
-    private init() {
+    private async init() {
         this.refresh();
 
+        const mainSpecEmoji = '🥇';
+
         // wanted to do the map only once as the static prop specActions, but getSpecEmoji() won't work yet at this point
-        return this.setupReactions(
-            RosterMessage.specActions.map(
+        return await this.setupReactions([
+            {
+                emoji: mainSpecEmoji,
+            },
+            ...RosterMessage.specActions.map(
                 spec =>
                     <ReactionAction<RosterMessage>>{
                         emoji: getSpecEmoji(spec),
-                        listener: function (mr, user, isRemoved) {
-                            const fn = isRemoved
-                                ? RosterUtils.removeSpecToUser
-                                : RosterUtils.addSpecToUser;
-                            return fn(this.roster, user.id, spec);
+                        // TODO didn't want to introduce Promise to listener so we're only using cache
+                        // this is probably no gonna work on all scenario, but need to know more how ReactionManager works
+                        // because maybe it is enough to rely on cache.
+                        // we may aswell keep track of users reaction to mainSpecEmoji ourselves by adding a listener to mainSpecEmoji
+                        // but kinda re-inventing the wheel offered by discord.js
+                        listener: function (_mr, user, isRemoved) {
+                            if (isRemoved) {
+                                return RosterUtils.removeSpecToUser(this.roster, user.id, spec);
+                            }
+
+                            // we don't keep cache of this, cause reacting to specs on roster is a rare action
+                            const mainSpecReaction = this.message.reactions.cache.find(
+                                v => v.emoji.name === mainSpecEmoji
+                            );
+
+                            if (
+                                mainSpecReaction != null &&
+                                mainSpecReaction.users.cache.some(v => v.id === user.id)
+                            ) {
+                                mainSpecReaction.users.remove(user.id);
+                                RosterUtils.setMainSpecToUser(this.roster, user.id, spec);
+                                return true;
+                            }
+
+                            return RosterUtils.addSpecToUser(this.roster, user.id, spec);
                         },
                     }
-            )
-        );
+            ),
+        ]);
     }
 
     private static decodeData(pathData: string[], paramData: { [id: string]: string[] }) {

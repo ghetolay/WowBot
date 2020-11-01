@@ -45,13 +45,13 @@ async function lookupMessages(
 
 export type ReactionListener = (r: MessageReaction, u: User | PartialUser) => boolean;
 
-interface BaseActionListener {
+export interface EmojiReaction {
     emoji: string | GuildEmoji;
     permision?: PermissionString;
     role?: string;
 }
 
-interface ReactionActionListener<T extends DynamicEmbedMessage> extends BaseActionListener {
+interface ReactionActionListener<T extends DynamicEmbedMessage> extends EmojiReaction {
     button?: false;
     /**
      * returns true if model has changed and message needs refresh
@@ -59,7 +59,7 @@ interface ReactionActionListener<T extends DynamicEmbedMessage> extends BaseActi
     listener: (this: T, r: MessageReaction, u: User | PartialUser, removed: boolean) => boolean;
 }
 
-interface ButtonActionListener<T extends DynamicEmbedMessage> extends BaseActionListener {
+interface ButtonActionListener<T extends DynamicEmbedMessage> extends EmojiReaction {
     /**
      * reactions are used as a button, only the click event matters and we constantly remove user's reactions
      */
@@ -73,6 +73,12 @@ interface ButtonActionListener<T extends DynamicEmbedMessage> extends BaseAction
 export type ReactionAction<T extends DynamicEmbedMessage> =
     | ReactionActionListener<T>
     | ButtonActionListener<T>;
+
+function isReactionAction<T extends DynamicEmbedMessage>(
+    v: ReactionAction<T> | EmojiReaction
+): v is ReactionAction<T> {
+    return (v as ReactionAction<T>).listener !== undefined;
+}
 
 export const enum MSG_STATUS {
     OPEN,
@@ -280,16 +286,16 @@ export abstract class DynamicEmbedMessage {
     }
 
     /*eslint @typescript-eslint/no-explicit-any: "off"*/
-    private currentActions: ReactionAction<any>[] = [];
+    private currentReactions: (EmojiReaction | ReactionAction<any>)[] = [];
 
     /**
      *
      * @param actions React emoji may not be in same order as action's array if some were already present on message
      */
     protected async setupReactions<T extends DynamicEmbedMessage>(
-        actions: ReactionAction<T>[]
+        actions: (EmojiReaction | ReactionAction<T>)[]
     ): Promise<void> {
-        const reactToDo: ReactionAction<T>[] = [...actions];
+        const reactToDo = [...actions];
 
         // -- clear previous reactions and keep track of which needs to be added --
         for (const m of this.messages) {
@@ -314,7 +320,7 @@ export abstract class DynamicEmbedMessage {
         }
 
         // -- set new actions --
-        this.currentActions = [...actions];
+        this.currentReactions = [...actions];
 
         // -- add missing reactions splitted across messages --
         const reactionsPerMessage = Math.min(20, Math.ceil(actions.length / this.messages.length));
@@ -335,12 +341,15 @@ export abstract class DynamicEmbedMessage {
 
     private onReaction(r: MessageReaction, u: User | PartialUser, removed: boolean) {
         // could the check fail ? check emoji.id (guildEmoji) or emoji.name (string) instead ?
-        const action = this.currentActions.find(
+        const reaction = this.currentReactions.find(
             a => a.emoji === r.emoji || a.emoji === r.emoji.name
         );
-        if (action == null) return;
+        if (reaction == null) return;
 
-        if (action.permision != null && !u.presence?.member?.permissions.has(action.permision)) {
+        if (
+            reaction.permision != null &&
+            !u.presence?.member?.permissions.has(reaction.permision)
+        ) {
             // TODO more information on feedback message
             sendDM(
                 u,
@@ -353,13 +362,15 @@ export abstract class DynamicEmbedMessage {
 
         // if (action.role && )
 
-        if (action.button && removed) return;
+        if (!isReactionAction<DynamicEmbedMessage>(reaction) || (reaction.button && removed)) {
+            return;
+        }
 
-        if (action.listener.call(this, r, u, removed)) {
+        if (reaction.listener.call(this, r, u, removed)) {
             this.render();
         }
 
-        return action.button;
+        return reaction.button;
     }
 
     /*eslint class-methods-use-this: "off"*/
