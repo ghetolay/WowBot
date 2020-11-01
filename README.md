@@ -1,4 +1,4 @@
-# wow-calendar
+# WowBot
 
 # Intro
 Discord bot to manage World of Warcraft calendar events. The current in-game calendar as some issues, such as :
@@ -66,6 +66,7 @@ List order is more or less priority order.
 ## Features
  - restrict sign-up by role
  - validate event action: closing all possible action and sending dm to all users accepted
+ - ability to set offspec on event
  - reminder for people not signed-up
  - flexible setup (for HM)
  - auto-roster based on people specs and setup needed
