@@ -1,5 +1,5 @@
 import { Message, MessageEmbed, PartialUser, User } from 'discord.js';
-import { logger, sendDM } from '../utils/utils';
+import { logger, promisifyFnCall, sendDM } from '../utils/utils';
 
 export interface DMCommand {
     description?: string;
@@ -9,7 +9,12 @@ export interface DMCommand {
         commandArgs: string[],
         answer: string,
         message: Message
-    ) => string | MessageEmbed | (string | MessageEmbed)[] | void;
+    ) =>
+        | string
+        | MessageEmbed
+        | (string | MessageEmbed)[]
+        | Promise<string | MessageEmbed | (string | MessageEmbed)[]>
+        | void;
 }
 
 export interface DMCommands {
@@ -96,7 +101,9 @@ export async function startDMCommandForm(
                     await sendDM(dmChannel, 'command not found');
                 } else {
                     const commandArguments = words.slice(1);
-                    const feedback = dmCommand.callback(commandArguments, answerLine, answers);
+                    const feedback = await promisifyFnCall(() =>
+                        dmCommand.callback(commandArguments, answerLine, answers)
+                    );
 
                     if (feedback != null) {
                         const feedbackArr = Array.isArray(feedback) ? feedback : [feedback];

@@ -192,7 +192,7 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
         };
     }
 
-    protected generateMessage(): MessageEmbed {
+    protected async generateMessage(): Promise<MessageEmbed> {
         // 0 = TANK, 1 = HEAL, 2 = Melee DPS, 3 = Range DPS
         const mainSpecs: string[][] = [[], [], [], []];
         const backupSpecs: string[][] = [[], [], [], []];
@@ -205,10 +205,11 @@ export class RosterMessage extends DynamicEmbedMessage implements Roster {
                 continue;
             }
 
-            const member = getMember(channel, playerId);
+            /*eslint no-await-in-loop: off*/
+            const member = await getMember(channel, playerId);
 
             if (member == null) {
-                logger.warn('missing user ' + playerId);
+                logger.warn('missing user on server ' + playerId);
                 continue;
             }
 

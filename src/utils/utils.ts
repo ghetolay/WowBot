@@ -50,14 +50,25 @@ export function isPromise<T>(p: Promise<T> | T): p is Promise<T> {
 
 /* --- Dicordjs related --- */
 
-export function getMember(channel: TextChannel, userId: Snowflake): GuildMember | undefined {
+export async function getMember(
+    channel: TextChannel,
+    userId: Snowflake
+): Promise<GuildMember | undefined> {
     // TODO if not in channel, warn about the fact user is not permitted on channel anymore
-    return channel.members.get(userId) || channel.guild.members.cache.get(userId);
+    const member = channel.members.get(userId) || channel.guild.members.cache.get(userId);
+    if (member != null) return member;
+
+    // TODO fetch for every user we don't find is too much, we need some timer on this
+    const membersUpdated = await channel.guild.members.fetch();
+    return membersUpdated.get(userId);
 }
 
-export function getMemberName(channel: TextChannel, userId: Snowflake): string | undefined {
+export async function getMemberName(
+    channel: TextChannel,
+    userId: Snowflake
+): Promise<string | undefined> {
     // TODO maybe keep displayname on the url link so if we don't find member anymore we use that
-    return getMember(channel, userId)?.displayName;
+    return (await getMember(channel, userId))?.displayName;
 }
 
 export function isTextChannel(channel: Channel): channel is TextChannel {
@@ -99,14 +110,15 @@ export function formatObjective(value: string | number, n: number, objective: nu
     return str;
 }
 
-export function formatPlayer(
+/* not used
+export async function formatPlayer(
     channel: TextChannel,
     playerId: string,
     data: { [key: string]: string | string[] } = {},
     bold = false
 ): string {
     // TODO handle playerId is wrong/absent
-    let playerStr = `[${getMemberName(channel, playerId) || 'unknown'}](${encodeToUrl(
+    let playerStr = `[${await getMemberName(channel, playerId) || 'unknown'}](${encodeToUrl(
         playerId,
         undefined,
         data
@@ -115,6 +127,7 @@ export function formatPlayer(
 
     return playerStr;
 }
+*/
 
 export function capitalize(str: string): string {
     return str[0].toUpperCase() + str.slice(1);

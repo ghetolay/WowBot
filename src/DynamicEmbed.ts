@@ -415,7 +415,7 @@ export abstract class DynamicEmbedMessage {
                 msg = this.message.embeds[0];
             } else {
                 // todo should we clone the returned message ? new MessageEmbed(this.generateMessage)
-                msg = this.generateMessage();
+                msg = await this.generateMessage();
 
                 const { pathData, paramData } = this.encodeData();
                 msg.setAuthor(
@@ -463,7 +463,7 @@ export abstract class DynamicEmbedMessage {
         pathData?: string[];
         paramData?: { [name: string]: string | string[] };
     };
-    protected abstract generateMessage(): MessageEmbed;
+    protected abstract async generateMessage(): Promise<MessageEmbed>;
 
     // ----- Utilities -----
 

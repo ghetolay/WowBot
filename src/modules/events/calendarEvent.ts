@@ -324,7 +324,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
     }
 
     /*eslint complexity: [warn, 12]*/
-    protected generateMessage(): MessageEmbed {
+    protected async generateMessage(): Promise<MessageEmbed> {
         const present: string[][] = [[], [], [], []];
         const absent: string[] = [];
         const bench: string[] = [];
@@ -333,10 +333,11 @@ export class CalendarEvent extends DynamicEmbedMessage {
 
         for (const playerId in this.lineup) {
             const status = this.lineup[playerId].status;
-            const user = getMember(chan, playerId)?.user;
+            /*eslint no-await-in-loop: off*/
+            const user = (await getMember(chan, playerId))?.user;
 
             if (user == null) {
-                logger.warn('missing user ' + playerId);
+                logger.warn('missing user from server ' + playerId);
                 continue;
             }
 
@@ -463,7 +464,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
                         \`set 256696214754874677 present\`
                     `,
                     /*eslint complexity: [warn, 15]*/
-                    callback: (args: string[]) => {
+                    callback: async (args: string[]) => {
                         // must be sync with ParticipantStatus, don't like that very much
                         const statusStr = ['present', 'late', 'absent', 'bench'];
                         const members = (this.message.channel as TextChannel).members;
@@ -550,7 +551,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
                             feedback += '\nPlayer(s) not found: ' + formatList(playersNotFound);
                         }
 
-                        return [this.generateMessage(), feedback];
+                        return [await this.generateMessage(), feedback];
                     },
                 },
                 /*
