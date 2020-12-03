@@ -1,5 +1,13 @@
 import { addMilliseconds, isPast, isValid, parse, set } from 'date-fns';
-import { GuildMember, Message, MessageEmbed, PartialUser, TextChannel, User } from 'discord.js';
+import {
+    GuildMember,
+    Message,
+    MessageEmbed,
+    MessageReaction,
+    PartialUser,
+    TextChannel,
+    User,
+} from 'discord.js';
 import schedule from 'node-schedule';
 import { startDMCommandForm } from '../../commands/dmCommands';
 import { DynamicEmbedMessage, MSG_STATUS, ReactionAction } from '../../DynamicEmbed';
@@ -57,33 +65,59 @@ export class CalendarEvent extends DynamicEmbedMessage {
         return this.date.getTime().toString();
     }
 
-    private static statusAction(
-        emoji: string,
+    private setPlayerStatusFromReact(
+        r: MessageReaction,
+        u: User | PartialUser,
         status: ParticipantStatus
-    ): ReactionAction<CalendarEvent> {
-        return {
-            emoji,
+    ) {
+        const res = this.setPlayerStatus(u.id, status);
+        if (res === null) {
+            sendDM(
+                u,
+                'You must select at least one spec on the roster message before you can signup to events\n' +
+                    this.specsRoster?.getLink()
+            );
+            return false;
+        }
+
+        return res;
+    }
+
+    private static readonly actions: ReactionAction<CalendarEvent>[] = [
+        {
+            emoji: EMOJI.PRESENT,
             button: true,
             listener: function (r, u) {
-                const res = this.setPlayerStatus(u.id, status);
-                if (res === null) {
+                if (this.status === MSG_STATUS.VALIDATED) {
+                    sendDM(u, "You can't sign-up on a validated event, it's too late folk !");
+                    return false;
+                }
+
+                return this.setPlayerStatusFromReact(r, u, ParticipantStatus.PRESENT);
+            },
+        },
+        {
+            emoji: EMOJI.ABSENT,
+            button: true,
+            listener: function (r, u) {
+                if (this.status === MSG_STATUS.VALIDATED) {
                     sendDM(
                         u,
-                        'You must select at least one spec on the roster message before you can signup to events\n' +
-                            this.specsRoster?.getLink()
+                        "You can't sign-off on a validated event, you have to contact an officier to do so."
                     );
                     return false;
                 }
 
-                return res;
+                return this.setPlayerStatusFromReact(r, u, ParticipantStatus.ABSENT);
             },
-        };
-    }
-
-    private static readonly actions: ReactionAction<CalendarEvent>[] = [
-        CalendarEvent.statusAction(EMOJI.PRESENT, ParticipantStatus.PRESENT),
-        CalendarEvent.statusAction(EMOJI.ABSENT, ParticipantStatus.ABSENT),
-        CalendarEvent.statusAction(EMOJI.LATE, ParticipantStatus.LATE),
+        },
+        {
+            emoji: EMOJI.LATE,
+            button: true,
+            listener: function (r, u) {
+                return this.setPlayerStatusFromReact(r, u, ParticipantStatus.LATE);
+            },
+        },
         {
             emoji: EMOJI.BENCH,
             button: false,
@@ -441,6 +475,13 @@ export class CalendarEvent extends DynamicEmbedMessage {
         return msg;
     }
 
+    // Validate the event, meaning lineup respect setup
+    // TODO not checking yet, because without flexible setup yet this would block some events
+    // eslint-disable-next-line class-methods-use-this
+    private validateEvent(): boolean {
+        return true;
+    }
+
     private async configurationForm(u: User | PartialUser) {
         logger.verbose('start configuration form with ' + u.id);
 
@@ -615,6 +656,18 @@ export class CalendarEvent extends DynamicEmbedMessage {
                         this.desc = answer.slice(5);
 
                         return this.generateMessage();
+                    },
+                },
+                validate: {
+                    description: '`validate`',
+                    helpMessage: 'validate the event and freeze sign-ups',
+                    callback: () => {
+                        if (!this.validateEvent()) {
+                            return "Can't validate event, lineup does not match setup";
+                        }
+
+                        this.status = MSG_STATUS.VALIDATED;
+                        return 'Event validated.';
                     },
                 },
             },

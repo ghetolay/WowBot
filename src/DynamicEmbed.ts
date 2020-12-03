@@ -83,6 +83,7 @@ function isReactionAction<T extends DynamicEmbedMessage>(
 export const enum MSG_STATUS {
     OPEN,
     CLOSE,
+    VALIDATED, // event only status, shouldn't be here
     DISCONNECTED,
     ERROR,
 }
@@ -379,12 +380,14 @@ export abstract class DynamicEmbedMessage {
         switch (status) {
             case MSG_STATUS.OPEN:
                 return '#00ff00';
+            case MSG_STATUS.VALIDATED:
+                return '#0000ff';
             case MSG_STATUS.DISCONNECTED:
                 return '#ffa500';
             case MSG_STATUS.ERROR:
                 return '#ff0000';
             case MSG_STATUS.CLOSE:
-                return '#0000ff';
+                return '#d600ff';
         }
     }
 
