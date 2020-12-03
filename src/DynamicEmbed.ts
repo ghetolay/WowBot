@@ -349,7 +349,7 @@ export abstract class DynamicEmbedMessage {
         if (
             reaction.permision != null &&
             // TODO may need to fetch members
-            this.message.guild?.members.cache.get(u.id)?.hasPermission(reaction.permision)
+            !this.message.guild?.members.cache.get(u.id)?.hasPermission(reaction.permision)
         ) {
             // TODO more information on feedback message
             sendDM(
