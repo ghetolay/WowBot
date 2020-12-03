@@ -1,5 +1,7 @@
 FROM node:current-alpine as builder
 
+WORKDIR /app
+
 RUN apk add --no-cache python make g++
 RUN npm install zlib-sync erlpack bufferutil utf-8-validate
 
@@ -9,12 +11,13 @@ WORKDIR /home/node/app
 ENV NPM_CONFIG_PREFIX=/home/node/.npm-global
 ENV NODE_ENV=production
 
-COPY --from=builder node_modules .
 COPY package*.json ./
 
 RUN npm install --production
 
-COPY $CONFIG_PATH .
+COPY --from=builder /app/node_modules ./node_modules
+# COPY $CONFIG_PATH . // not working using file name directly for the moment
+COPY config.json .
 COPY /build/. .
 
 USER node
