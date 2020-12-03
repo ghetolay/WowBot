@@ -21,7 +21,9 @@ EventManager.get().registerCommand('roster', async m => {
 
 export async function onGuildInit(g: Guild): Promise<void> {
     const channel = g.channels.cache.find(
-        c => c.name.indexOf(isProd() ? 'calendar' : 'test-bot') >= 0 && isTextChannel(c)
+        c =>
+            (isProd() ? c.id === '745589331623936022' : c.name.indexOf('test-bot') >= 0) &&
+            isTextChannel(c)
     );
 
     if (channel != null) {
