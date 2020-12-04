@@ -150,10 +150,15 @@ export class CalendarEvent extends DynamicEmbedMessage {
         private specsRoster: Roster | undefined,
         private setup: EventSetup = { tank: 2, heal: 4, dps: 14 },
         private desc?: string | null,
+        status?: MSG_STATUS | null,
         private iconUrl?: string | null,
         private lineup: CalendarLineup = {}
     ) {
         super(channel, messages);
+
+        if (status != null) {
+            this.status = status;
+        }
 
         if (this.specsRoster == null) {
             this.errors.push(new Error("Can't find roster"));
@@ -172,6 +177,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
         specsRoster: Roster,
         setup?: EventSetup,
         desc?: string | null,
+        status?: MSG_STATUS | null,
         iconUrl?: string | null
     ): Promise<CalendarEvent> {
         const instance = new CalendarEvent(
@@ -181,6 +187,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
             specsRoster,
             setup,
             desc,
+            status,
             iconUrl
         );
         await instance.init();
@@ -216,6 +223,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
                             RosterManager.get().getRoster(data.specsRoster),
                             data.setup,
                             data.desc,
+                            parseInt(data.status) || MSG_STATUS.OPEN,
                             // todo encode iconurl on url or keep this exception ?
                             parsedRoster.messages.embeds[0].thumbnail?.url,
                             data.lineup
@@ -248,6 +256,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
                 this.specsRoster?.id || '0',
                 CalendarEvent.encodeSetup(this.setup),
                 this.desc || '',
+                String(this.status),
             ],
             paramData: CalendarEvent.encodeLineup(this.lineup),
         };
@@ -258,6 +267,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
             specsRoster: pathData[0],
             setup: CalendarEvent.decodeSetup(pathData[1]),
             desc: pathData[2],
+            status: pathData[3],
 
             lineup: CalendarEvent.decodeLineup(paramData),
         };
@@ -387,7 +397,7 @@ export class CalendarEvent extends DynamicEmbedMessage {
                         (this.lineup[playerId].benchable === true ? ' ' + EMOJI.BENCH : '');
 
                     present[toSpecTypePlus(WowSpecs[specId])].push(
-                        getSpecEmoji(WowSpecs[specId])?.toString() + user.toString() + extra
+                        getSpecEmoji(WowSpecs[specId])?.toString() + ' ' + user.toString() + extra
                     );
                     break;
                 case ParticipantStatus.ABSENT:
@@ -658,16 +668,29 @@ export class CalendarEvent extends DynamicEmbedMessage {
                         return this.generateMessage();
                     },
                 },
-                validate: {
-                    description: '`validate`',
-                    helpMessage: 'validate the event and freeze sign-ups',
-                    callback: () => {
-                        if (!this.validateEvent()) {
-                            return "Can't validate event, lineup does not match setup";
+                status: {
+                    description: '`status validated`',
+                    helpMessage:
+                        "change the event satus, must be one of 'open', 'closed', 'validated' or 'error'",
+                    callback: ([status]: string[]) => {
+                        switch (status) {
+                            case 'open':
+                                this.status = MSG_STATUS.OPEN;
+                                break;
+                            case 'closed':
+                                this.status = MSG_STATUS.CLOSE;
+                                break;
+                            case 'validated':
+                                this.status = MSG_STATUS.VALIDATED;
+                                break;
+                            case 'error':
+                                this.status = MSG_STATUS.ERROR;
+                                break;
+                            default:
+                                return "Invalid status, must be one of 'open', 'closed', 'validated' or 'error'";
                         }
 
-                        this.status = MSG_STATUS.VALIDATED;
-                        return 'Event validated.';
+                        return this.generateMessage();
                     },
                 },
             },
