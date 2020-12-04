@@ -47,7 +47,7 @@ export type ReactionListener = (r: MessageReaction, u: User | PartialUser) => bo
 
 export interface EmojiReaction {
     emoji: string | GuildEmoji;
-    permision?: PermissionString;
+    permision?: PermissionString | number;
     role?: string;
 }
 
@@ -347,10 +347,14 @@ export abstract class DynamicEmbedMessage {
         );
         if (reaction == null) return;
 
+        if (!isReactionAction<DynamicEmbedMessage>(reaction) || (reaction.button && removed)) {
+            return;
+        }
+
         if (
             reaction.permision != null &&
             // TODO may need to fetch members
-            !this.message.guild?.members.cache.get(u.id)?.hasPermission(reaction.permision)
+            !(<TextChannel>this.message.channel).permissionsFor(u.id)?.has(reaction.permision)
         ) {
             // TODO more information on feedback message
             sendDM(
@@ -360,12 +364,6 @@ export abstract class DynamicEmbedMessage {
                 I'll try to give more information in the future`
             );
             return true;
-        }
-
-        // if (action.role && )
-
-        if (!isReactionAction<DynamicEmbedMessage>(reaction) || (reaction.button && removed)) {
-            return;
         }
 
         if (reaction.listener.call(this, r, u, removed)) {
