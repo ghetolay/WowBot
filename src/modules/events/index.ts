@@ -60,6 +60,9 @@ EventManager.get().registerCommand('event', async m => {
             throw new FeedbackError('Invalid date');
         }
 
+        // description
+        const desc = m.reader.getString();
+
         // roster id or name
         const rosterStr = m.reader.getString();
         const roster =
@@ -76,10 +79,7 @@ EventManager.get().registerCommand('event', async m => {
             iconUrl = default_icons[Math.max(0, Math.min(default_icons.length - 1, iconIdx))];
         }
 
-        // description
-        const desc = m.reader.getString();
-
-        await CalendarEvent.create(m.message.channel, date, roster, undefined, desc, iconUrl);
+        await CalendarEvent.create(m.message.channel, date, roster, undefined, desc, null, iconUrl);
     }
 });
 
