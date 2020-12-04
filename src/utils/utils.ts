@@ -270,6 +270,9 @@ export const logger = createLogger({
 
 /* --- Fun --- */
 const euralieId = '280315059127844865';
+const wakouId = '217741548169723905';
+const essaId = '287537929188933632';
+const rioId = '315556697902940162';
 
 /**
  * function for fun only, customize how bot send pm's based on user
@@ -286,6 +289,15 @@ export function sendDM(
     switch (userId) {
         case euralieId:
             message = '❤️' + msg + '❤️';
+            break;
+        case wakouId:
+            message = msg + ' noob...';
+            break;
+        case essaId:
+            message = msg + ' larama !';
+            break;
+        case rioId:
+            message = 'CAWK, ' + msg;
             break;
         default:
             message = msg;
