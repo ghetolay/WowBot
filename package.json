@@ -1,6 +1,6 @@
 {
   "name": "wow-calendar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Discord bot to exceed in-game wow calendar",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
     "inspect": "tsnd --inspect -- src/index.ts",
     "prebuild": "rimraf build",
     "build": "tsc",
-    "docker": "docker build --build-arg CONFIG_PATH=config.json -t ghetolay/wowbot .",
+    "docker": "docker build --build-arg CONFIG_PATH=config.json -t imbasoft.fr/ghetolay/wowbot .",
     "dist": "npm run build && npm run docker",
     "docker-dev": "npm run dist && docker run -e 'NODE_ENV=production' ghetolay/wowbot",
     "test": "node test.js $PORT"
